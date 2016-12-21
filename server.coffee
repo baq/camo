@@ -8,16 +8,15 @@ QueryString = require 'querystring'
 
 port            = parseInt process.env.PORT        || 8081, 10
 version         = require(Path.resolve(__dirname, "package.json")).version
-shared_key      = process.env.CAMO_KEY             || '0x24FEEDFACEDEADBEEFCAFE'
-max_redirects   = process.env.CAMO_MAX_REDIRECTS   || 4
-camo_hostname   = process.env.CAMO_HOSTNAME        || "unknown"
+shared_key      = process.env.CAMO_KEY             || 'imwithher2016'
+max_redirects   = process.env.CAMO_MAX_REDIRECTS   || 5
+camo_hostname   = process.env.CAMO_HOSTNAME        || "secure.60db.co"
 socket_timeout  = process.env.CAMO_SOCKET_TIMEOUT  || 10
-logging_enabled = process.env.CAMO_LOGGING_ENABLED || "disabled"
-keep_alive = process.env.CAMO_KEEP_ALIVE || "false"
+logging_enabled = process.env.CAMO_LOGGING_ENABLED || "enabled"
+keep_alive      = process.env.CAMO_KEEP_ALIVE      || "false"
+content_length_limit = parseInt(process.env.CAMO_LENGTH_LIMIT || 10485760, 10)
 
-content_length_limit = parseInt(process.env.CAMO_LENGTH_LIMIT || 5242880, 10)
-
-accepted_image_mime_types = JSON.parse(Fs.readFileSync(
+accepted_audio_mime_types = JSON.parse(Fs.readFileSync(
   Path.resolve(__dirname, "mime-types.json"),
   encoding: 'utf8'
 ))
@@ -164,9 +163,9 @@ process_url = (url, transferredHeaders, resp, remaining_redirects) ->
 
             contentTypePrefix = contentType.split(";")[0].toLowerCase()
 
-            unless contentTypePrefix in accepted_image_mime_types
+            unless contentTypePrefix in accepted_audio_mime_types
               srcResp.destroy()
-              four_oh_four(resp, "Non-Image content-type returned '#{contentTypePrefix}'", url)
+              four_oh_four(resp, "Non-Audio content-type returned '#{contentTypePrefix}'", url)
               return
 
             debug_log newHeaders
@@ -218,7 +217,7 @@ server = Http.createServer (req, resp) ->
     transferredHeaders =
       'Via'                     : user_agent
       'User-Agent'              : user_agent
-      'Accept'                  : req.headers.accept ? 'image/*'
+      'Accept'                  : req.headers.accept ? 'audio/*'
       'Accept-Encoding'         : req.headers['accept-encoding'] ? ''
       "X-Frame-Options"         : default_security_headers["X-Frame-Options"]
       "X-XSS-Protection"        : default_security_headers["X-XSS-Protection"]
