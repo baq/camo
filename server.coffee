@@ -27,6 +27,9 @@ debug_log = (msg) ->
     console.log(msg)
     console.log("--------------------------------------------")
 
+access_log = (msg) ->
+    console.log(msg)
+
 error_log = (msg) ->
   unless logging_enabled == "disabled"
     console.error("[#{new Date().toISOString()}] #{msg}")
@@ -234,10 +237,8 @@ server = Http.createServer (req, resp) ->
       url_type = 'query'
       dest_url = QueryString.parse(url.query).url
 
-    debug_log({
-      type:     url_type
+    access_log({
       url:      req.url
-      headers:  req.headers
       dest:     dest_url
       digest:   query_digest
     })

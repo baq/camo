@@ -9,7 +9,7 @@ require 'test/unit'
 
 module CamoProxyTests
   def config
-    { 'key'  => ENV['CAMO_KEY']  || "0x24FEEDFACEDEADBEEFCAFE",
+    { 'key'  => ENV['CAMO_KEY']  || "imwithher2016",
       'host' => ENV['CAMO_HOST'] || "http://localhost:8081" }
   end
 
@@ -31,29 +31,8 @@ module CamoProxyTests
     end
   end
 
-  def test_proxy_localhost_test_server
-    spawn_server(:ok) do |host|
-      response = RestClient.get("http://#{host}/octocat.jpg")
-      assert_equal(200, response.code)
-
-      response = request("http://#{host}/octocat.jpg")
-      assert_equal(200, response.code)
-    end
-  end
-
-  def test_proxy_survives_redirect_without_location
-    spawn_server(:redirect_without_location) do |host|
-      assert_raise RestClient::ResourceNotFound do
-        request("http://#{host}")
-      end
-    end
-
-    response = request('http://media.ebaumsworld.com/picture/Mincemeat/Pimp.jpg')
-    assert_equal(200, response.code)
-  end
-
-  def test_follows_https_redirect_for_image_links
-    response = request('http://dl.dropbox.com/u/602885/github/soldier-squirrel.jpg')
+  def test_follows_https_redirect_for_audio_links
+    response = request('http://www.kqed.org/.stream/mp3splice/radio/tcr/2016/11/2016-11-02-tcr.mp3')
     assert_equal(200, response.code)
   end
 
@@ -72,25 +51,46 @@ module CamoProxyTests
       assert_equal "max-age=31536000; includeSubDomains", response.headers[:strict_transport_security]
     end
 
-    response = request('http://dl.dropbox.com/u/602885/github/soldier-squirrel.jpg')
+    response = request('http://www.kqed.org/.stream/mp3splice/radio/tcr/2016/11/2016-11-02-tcr.mp3')
     assert_equal "deny", response.headers[:x_frame_options]
     assert_equal "default-src 'none'; img-src data:; style-src 'unsafe-inline'", response.headers[:content_security_policy]
     assert_equal "nosniff", response.headers[:x_content_type_options]
     assert_equal "max-age=31536000; includeSubDomains", response.headers[:strict_transport_security]
   end
 
-  def test_proxy_valid_image_url
-    response = request('http://media.ebaumsworld.com/picture/Mincemeat/Pimp.jpg')
+  def test_proxy_https_kqed
+    response = request('https://s3-us-west-1.amazonaws.com/audio.prod.spoke/0002082016_Immigration_in_the_Election_mix_final.mp3')
     assert_equal(200, response.code)
+  end
+
+  def test_follows_redirects
+    response = request('https://goo.gl/ngrpgx')
+    assert_equal(200, response.code)
+  end
+
+  def test_proxy_valid_audio_url
+    response = request('http://s3-us-west-1.amazonaws.com/audio.prod.spoke/0511112016_Quartz_at_60dB_Don_t_Unfriend_your_Friends_Talk_and_Listen_Instead.mp3')
+    assert_equal(200, response.code)
+  end
+
+  def test_audio_with_delimited_content_type_url
+    response = request('http://uploadir.com/u/kwm2g7kd')
+    assert_equal(200, response.code)
+  end
+  
+=begin  
+  def test_proxy_localhost_test_server
+    spawn_server(:ok) do |host|
+      response = RestClient.get("http://localhost:9292/kqed.mp3")
+      assert_equal(200, response.code)
+
+      response = request("http://localhost:9292/kqed.mp3")
+      assert_equal(200, response.code)
+    end
   end
 
   def test_svg_image_with_delimited_content_type_url
     response = request('https://saucelabs.com/browser-matrix/bootstrap.svg')
-    assert_equal(200, response.code)
-  end
-
-  def test_png_image_with_delimited_content_type_url
-    response = request('http://uploadir.com/u/cm5el1v7')
     assert_equal(200, response.code)
   end
 
@@ -114,21 +114,6 @@ module CamoProxyTests
     response = request('http://www.igvita.com/posts/12/spdyproxy-diagram.png')
     assert_equal(200, response.code)
     assert_nil(response.headers[:content_length])
-  end
-
-  def test_proxy_https_octocat
-    response = request('https://octodex.github.com/images/original.png')
-    assert_equal(200, response.code)
-  end
-
-  def test_proxy_https_gravatar
-    response = request('https://1.gravatar.com/avatar/a86224d72ce21cd9f5bee6784d4b06c7')
-    assert_equal(200, response.code)
-  end
-
-  def test_follows_redirects
-    response = request('http://cl.ly/1K0X2Y2F1P0o3z140p0d/boom-headshot.gif')
-    assert_equal(200, response.code)
   end
 
   def test_follows_redirects_formatted_strangely
@@ -220,41 +205,55 @@ module CamoProxyTests
     assert_equal("0", response.headers[:expires])
     assert_equal("no-cache, no-store, private, must-revalidate", response.headers[:cache_control])
   end
+  
+  def test_proxy_survives_redirect_without_location
+    spawn_server(:redirect_without_location) do |host|
+      assert_raise RestClient::ResourceNotFound do
+        request("http://#{host}")
+      end
+    end
+
+    response = request('http://media.ebaumsworld.com/picture/Mincemeat/Pimp.jpg')
+    assert_equal(200, response.code)
+  end
+=end
 end
 
+=begin
 class CamoProxyQueryStringTest < Test::Unit::TestCase
   include CamoProxyTests
 
-  def request_uri(image_url)
+  def request_uri(audio_url)
     hexdigest = OpenSSL::HMAC.hexdigest(
-      OpenSSL::Digest.new('sha1'), config['key'], image_url)
+      OpenSSL::Digest.new('sha1'), config['key'], audio_url)
 
     uri = Addressable::URI.parse("#{config['host']}/#{hexdigest}")
-    uri.query_values = { 'url' => image_url, 'repo' => '', 'path' => '' }
+    uri.query_values = { 'url' => audio_url, 'repo' => '', 'path' => '' }
 
     uri.to_s
   end
 
-  def request(image_url)
-    RestClient.get(request_uri(image_url))
+  def request(audio_url)
+    RestClient.get(request_uri(audio_url))
   end
 end
+=end
 
 class CamoProxyPathTest < Test::Unit::TestCase
   include CamoProxyTests
 
-  def hexenc(image_url)
-    image_url.to_enum(:each_byte).map { |byte| "%02x" % byte }.join
+  def hexenc(audio_url)
+    audio_url.to_enum(:each_byte).map { |byte| "%02x" % byte }.join
   end
 
-  def request_uri(image_url)
+  def request_uri(audio_url)
     hexdigest = OpenSSL::HMAC.hexdigest(
-      OpenSSL::Digest.new('sha1'), config['key'], image_url)
-    encoded_image_url = hexenc(image_url)
-    "#{config['host']}/#{hexdigest}/#{encoded_image_url}"
+      OpenSSL::Digest.new('sha1'), config['key'], audio_url)
+    encoded_audio_url = hexenc(audio_url)
+    "#{config['host']}/#{hexdigest}/#{encoded_audio_url}"
   end
 
-  def request(image_url)
-    RestClient.get(request_uri(image_url))
+  def request(audio_url)
+    RestClient.get(request_uri(audio_url))
   end
 end

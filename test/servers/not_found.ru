@@ -1,5 +1,5 @@
 run lambda { |env|
-  path = File.expand_path('../octocat.jpg', __FILE__)
+  path = File.expand_path('../kqed.mp3', __FILE__)
   data = File.read(path)
-  [404, {'Content-Type' => 'image/jpeg'}, [data]]
+  [404, {'Content-Type' => 'audio/mpeg'}, [data]]
 }
